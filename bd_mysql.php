@@ -114,7 +114,34 @@ switch ($accion) {
             echo json_encode(["status" => "error", "mensaje" => "Correo o contraseña incorrectos"]);
         }
         break;
+    //categoria 
+    case 'obtener_por_categoria':
+        $id_categoria = intval($_REQUEST['id_categoria'] ?? 0);
 
+        if ($id_categoria > 0) {
+            // Consultar la categoría y hasta 2 libros
+            $sqlCat = "SELECT nombre FROM categorias WHERE id_categoria = :id_cat";
+            $stmtCat = $pdo->prepare($sqlCat);
+            $stmtCat->execute([':id_cat' => $id_categoria]);
+            $catRow = $stmtCat->fetch();
+
+            $sqlLibros = "SELECT id_libro, titulo, autor, fecha_publicacion, imagen_url, es_proximo 
+                          FROM libros 
+                          WHERE id_categoria = :id_cat 
+                          ORDER BY id_libro ASC LIMIT 2";
+            $stmtLibros = $pdo->prepare($sqlLibros);
+            $stmtLibros->execute([':id_cat' => $id_categoria]);
+            $libros = $stmtLibros->fetchAll(PDO::FETCH_ASSOC);
+
+            echo json_encode([
+                "status" => "ok",
+                "categoria" => $catRow['nombre'] ?? 'Categoría',
+                "libros" => $libros
+            ]);
+        } else {
+            echo json_encode(["status" => "error", "mensaje" => "ID de categoría inválido"]);
+        }
+        break;    
     // Acción no reconocida
     default:
         echo json_encode(["status" => "error", "mensaje" => "Acción no especificada o no válida"]);
