@@ -141,7 +141,49 @@ switch ($accion) {
         } else {
             echo json_encode(["status" => "error", "mensaje" => "ID de categoría inválido"]);
         }
-        break;    
+        break;  
+    case 'buscar':
+        $query = trim($_REQUEST['q'] ?? '');
+
+        if (!empty($query)) {
+            // 1. Buscar si coincide con el nombre de una CATEGORÍA
+            $sqlCat = "SELECT id_categoria, nombre FROM categorias WHERE LOWER(nombre) LIKE LOWER(:q) LIMIT 1";
+            $stmtCat = $pdo->prepare($sqlCat);
+            $stmtCat->execute([':q' => "%$query%"]);
+            $categoria = $stmtCat->fetch();
+
+            if ($categoria) {
+                echo json_encode([
+                    "status" => "ok",
+                    "tipo" => "categoria",
+                    "id_categoria" => $categoria['id_categoria'],
+                    "nombre" => $categoria['nombre']
+                ]);
+                break;
+            }
+
+            // 2. Si no es categoría, buscar si coincide con el título de un LIBRO
+            $sqlLibro = "SELECT id_libro, titulo FROM libros WHERE LOWER(titulo) LIKE LOWER(:q) LIMIT 1";
+            $stmtLibro = $pdo->prepare($sqlLibro);
+            $stmtLibro->execute([':q' => "%$query%"]);
+            $libro = $stmtLibro->fetch();
+
+            if ($libro) {
+                echo json_encode([
+                    "status" => "ok",
+                    "tipo" => "libro",
+                    "id_libro" => $libro['id_libro'],
+                    "titulo" => $libro['titulo']
+                ]);
+                break;
+            }
+
+            // 3. Si no se encontró nada
+            echo json_encode(["status" => "error", "mensaje" => "No se encontraron resultados"]);
+        } else {
+            echo json_encode(["status" => "error", "mensaje" => "Consulta vacía"]);
+        }
+        break;      
     // Acción no reconocida
     default:
         echo json_encode(["status" => "error", "mensaje" => "Acción no especificada o no válida"]);
