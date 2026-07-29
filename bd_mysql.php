@@ -60,7 +60,50 @@ switch ($accion) {
             echo json_encode(["status" => "error", "mensaje" => "ID de libro no valido"]);
         }
         break;
+    // ==========================================
+    // 📖 REALIZAR PRÉSTAMO
+    // ==========================================
+    case 'realizar_prestamo':
+        $id_usuario = intval($_REQUEST['id_usuario'] ?? 0);
+        $id_libro   = intval($_REQUEST['id_libro'] ?? 0);
 
+        if ($id_usuario > 0 && $id_libro > 0) {
+            // 1. Verificar si el libro tiene stock disponible
+            $stmtCheck = $pdo->prepare("SELECT stock FROM libros WHERE id_libro = :id_l");
+            $stmtCheck->execute([':id_l' => $id_libro]);
+            $libro = $stmtCheck->fetch();
+
+            if (!$libro) {
+                echo json_encode(["status" => "error", "mensaje" => "El libro no existe"]);
+                break;
+            }
+
+            if (intval($libro['stock']) <= 0) {
+                echo json_encode(["status" => "error", "mensaje" => "Lo sentimos, no hay stock disponible"]);
+                break;
+            }
+
+            // 2. Verificar si el usuario ya tiene este mismo libro prestado activo
+            $stmtActivo = $pdo->prepare("SELECT id_prestamo FROM prestamos WHERE id_usuario = :id_u AND id_libro = :id_l AND estado = 'activo'");
+            $stmtActivo->execute([':id_u' => $id_usuario, ':id_l' => $id_libro]);
+            if ($stmtActivo->fetch()) {
+                echo json_encode(["status" => "error", "mensaje" => "Ya tienes este libro prestado actualmente"]);
+                break;
+            }
+
+            // 3. Registrar el préstamo
+            $sqlIns = "INSERT INTO prestamos (id_usuario, id_libro, estado) VALUES (:id_u, :id_l, 'activo')";
+            $pdo->prepare($sqlIns)->execute([':id_u' => $id_usuario, ':id_l' => $id_libro]);
+
+            // 4. Reducir el stock del libro en -1
+            $sqlStock = "UPDATE libros SET stock = stock - 1 WHERE id_libro = :id_l";
+            $pdo->prepare($sqlStock)->execute([':id_l' => $id_libro]);
+
+            echo json_encode(["status" => "ok", "mensaje" => "¡Préstamo realizado con éxito!"]);
+        } else {
+            echo json_encode(["status" => "error", "mensaje" => "Datos de usuario o libro no válidos"]);
+        }
+        break;
     // ==========================================
     // 2. REGISTRO DE USUARIOS
     // ==========================================
