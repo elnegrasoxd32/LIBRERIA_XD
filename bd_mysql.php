@@ -183,6 +183,143 @@ switch ($accion) {
         } else {
             echo json_encode(["status" => "error", "mensaje" => "Consulta vacía"]);
         }
+        break;
+        // ==========================================
+    // 📁 PRÉSTAMOS ACTIVOS (Icono Folder)
+    // ==========================================
+    case 'obtener_prestamos_activos':
+        $id_usuario = intval($_REQUEST['id_usuario'] ?? 1); // ID 1 por defecto
+
+        $sql = "SELECT p.id_prestamo, l.titulo, c.nombre AS genero, 
+                       TO_CHAR(p.fecha_prestamo, 'DD/MM/YYYY') AS fecha_prestamo 
+                FROM prestamos p
+                INNER JOIN libros l ON p.id_libro = l.id_libro
+                INNER JOIN categorias c ON l.id_categoria = c.id_categoria
+                WHERE p.id_usuario = :id_user AND p.estado = 'activo'
+                ORDER BY p.fecha_prestamo DESC";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':id_user' => $id_usuario]);
+        
+        echo json_encode(["status" => "ok", "prestamos" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        break;
+
+    // ==========================================
+    // HISTORIAL DE DEVOLUCIONES (Icono Reloj)
+    // ==========================================
+    case 'obtener_historial':
+        $id_usuario = intval($_REQUEST['id_usuario'] ?? 1);
+
+        $sql = "SELECT p.id_prestamo, l.titulo, c.nombre AS genero, 
+                       TO_CHAR(p.fecha_prestamo, 'DD/MM/YYYY') AS fecha_prestamo,
+                       TO_CHAR(p.fecha_devolucion, 'DD/MM/YYYY') AS fecha_devolucion 
+                FROM prestamos p
+                INNER JOIN libros l ON p.id_libro = l.id_libro
+                INNER JOIN categorias c ON l.id_categoria = c.id_categoria
+                WHERE p.id_usuario = :id_user AND p.estado = 'devuelto'
+                ORDER BY p.fecha_devolucion DESC";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':id_user' => $id_usuario]);
+        
+        echo json_encode(["status" => "ok", "historial" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        break;
+
+    // ==========================================
+    //  DEVOLVER LIBRO
+    // ==========================================
+    case 'devolver_libro':
+        $id_prestamo = intval($_REQUEST['id_prestamo'] ?? 0);
+
+        if ($id_prestamo > 0) {
+            // 1. Obtener el id_libro para devolverle el stock
+            $stmtFind = $pdo->prepare("SELECT id_libro FROM prestamos WHERE id_prestamo = :id_p");
+            $stmtFind->execute([':id_p' => $id_prestamo]);
+            $row = $stmtFind->fetch();
+
+            if ($row) {
+                // 2. Marcar como devuelto
+                $sqlDev = "UPDATE prestamos 
+                           SET estado = 'devuelto', fecha_devolucion = CURRENT_TIMESTAMP 
+                           WHERE id_prestamo = :id_p";
+                $pdo->prepare($sqlDev)->execute([':id_p' => $id_prestamo]);
+
+                // 3. Aumentar el stock del libro
+                $sqlStock = "UPDATE libros SET stock = stock + 1 WHERE id_libro = :id_l";
+                $pdo->prepare($sqlStock)->execute([':id_l' => $row['id_libro']]);
+
+                echo json_encode(["status" => "ok", "mensaje" => "Libro devuelto con éxito"]);
+            } else {
+                echo json_encode(["status" => "error", "mensaje" => "Préstamo no encontrado"]);
+            }
+        } else {
+            echo json_encode(["status" => "error", "mensaje" => "ID de préstamo inválido"]);
+        }
+        break;
+    // ==========================================
+    // 1. REGISTRO DE USUARIOS
+    // ==========================================
+    case 'registrar_usuario':
+        $nombre   = trim($_REQUEST['nombre'] ?? '');
+        $email    = trim($_REQUEST['email'] ?? '');
+        $password = trim($_REQUEST['password'] ?? '');
+
+        if (!empty($nombre) && !empty($email) && !empty($password)) {
+            // Verificar si el correo ya existe
+            $stmtCheck = $pdo->prepare("SELECT id_usuario FROM usuarios WHERE LOWER(email) = LOWER(:email)");
+            $stmtCheck->execute([':email' => $email]);
+
+            if ($stmtCheck->fetch()) {
+                echo json_encode(["status" => "error", "mensaje" => "El correo ya está registrado"]);
+            } else {
+                // Registrar el nuevo usuario
+                $sql = "INSERT INTO usuarios (nombre, email, password) VALUES (:nombre, :email, :password) RETURNING id_usuario";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([
+                    ':nombre'   => $nombre,
+                    ':email'    => $email,
+                    ':password' => $password
+                ]);
+                $user = $stmt->fetch();
+
+                echo json_encode([
+                    "status" => "ok",
+                    "mensaje" => "Registro exitoso",
+                    "id_usuario" => $user['id_usuario'],
+                    "nombre" => $nombre
+                ]);
+            }
+        } else {
+            echo json_encode(["status" => "error", "mensaje" => "Completa todos los campos"]);
+        }
+        break;
+
+    // ==========================================
+    // 2. INICIO DE SESIÓN (LOGIN)
+    // ==========================================
+    case 'login':
+        $email    = trim($_REQUEST['email'] ?? '');
+        $password = trim($_REQUEST['password'] ?? '');
+
+        if (!empty($email) && !empty($password)) {
+            $sql = "SELECT id_usuario, nombre FROM usuarios WHERE LOWER(email) = LOWER(:email) AND password = :password";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([':email' => $email, ':password' => $password]);
+            $user = $stmt->fetch();
+
+            if ($user) {
+                echo json_encode([
+                    "status" => "ok",
+                    "mensaje" => "Bienvenido",
+                    "id_usuario" => $user['id_usuario'],
+                    "nombre" => $user['nombre']
+                ]);
+            } else {
+                echo json_encode(["status" => "error", "mensaje" => "Credenciales incorrectas"]);
+            }
+        } else {
+            echo json_encode(["status" => "error", "mensaje" => "Ingresa email y contraseña"]);
+        }
         break;      
     // Acción no reconocida
     default:
