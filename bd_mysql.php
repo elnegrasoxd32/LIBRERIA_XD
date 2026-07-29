@@ -29,10 +29,11 @@ switch ($accion) {
     // 1. OBTENER DETALLE DE UN LIBRO
     // ==========================================
     case 'obtener_detalle':
+        // Acepta id_libro tanto por GET como por POST
         $id_libro = intval($_REQUEST['id_libro'] ?? 0);
 
         if ($id_libro > 0) {
-            $sql = "SELECT l.id_libro, l.titulo, l.autor, l.descripcion, l.stock, l.imagen_url, c.nombre AS categoria 
+            $sql = "SELECT l.id_libro, l.titulo, l.autor, l.descripcion_corta, l.descripcion, l.stock, l.imagen_url, c.nombre AS categoria 
                     FROM libros l 
                     INNER JOIN categorias c ON l.id_categoria = c.id_categoria 
                     WHERE l.id_libro = :id_libro";
@@ -46,16 +47,17 @@ switch ($accion) {
                     "status" => "ok",
                     "titulo" => $row['titulo'],
                     "autor" => $row['autor'],
+                    "descripcion_corta" => $row['descripcion_corta'],
                     "descripcion" => $row['descripcion'],
                     "categoria" => $row['categoria'],
                     "disponibles" => $row['stock'],
                     "imagen_url" => $row['imagen_url']
                 ]);
             } else {
-                echo json_encode(["status" => "error", "mensaje" => "Libro no encontrado"]);
+                echo json_encode(["status" => "error", "mensaje" => "Libro no encontrado en la base de datos"]);
             }
         } else {
-            echo json_encode(["status" => "error", "mensaje" => "ID de libro no válido"]);
+            echo json_encode(["status" => "error", "mensaje" => "ID de libro no valido"]);
         }
         break;
 
