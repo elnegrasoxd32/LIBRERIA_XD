@@ -64,56 +64,10 @@ switch ($accion) {
     // ==========================================
     // 2. REGISTRO DE USUARIOS
     // ==========================================
-    case 'registrar_usuario':
-        $nombre   = trim($_POST['nombre'] ?? '');
-        $email    = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
-
-        if (!empty($nombre) && !empty($email) && !empty($password)) {
-            // Verificar si el correo ya existe
-            $stmtCheck = $pdo->prepare("SELECT id_usuario FROM usuarios WHERE email = :email");
-            $stmtCheck->execute([':email' => $email]);
-
-            if ($stmtCheck->fetch()) {
-                echo json_encode(["status" => "error", "mensaje" => "El correo ya está registrado"]);
-            } else {
-                $sqlInsert = "INSERT INTO usuarios (nombre, email, password) VALUES (:nombre, :email, :password)";
-                $stmtInsert = $pdo->prepare($sqlInsert);
-                
-                if ($stmtInsert->execute([':nombre' => $nombre, ':email' => $email, ':password' => $password])) {
-                    echo json_encode(["status" => "ok", "mensaje" => "Usuario registrado con éxito"]);
-                } else {
-                    echo json_encode(["status" => "error", "mensaje" => "Error al registrar"]);
-                }
-            }
-        } else {
-            echo json_encode(["status" => "error", "mensaje" => "Faltan datos requeridos"]);
-        }
-        break;
 
     // ==========================================
     // 3. INICIO DE SESIÓN (LOGIN)
     // ==========================================
-    case 'login':
-        $email    = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
-
-        $sql = "SELECT id_usuario, nombre, email FROM usuarios WHERE email = :email AND password = :password";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([':email' => $email, ':password' => $password]);
-        $row = $stmt->fetch();
-
-        if ($row) {
-            echo json_encode([
-                "status" => "ok",
-                "id_usuario" => $row['id_usuario'],
-                "nombre" => $row['nombre'],
-                "email" => $row['email']
-            ]);
-        } else {
-            echo json_encode(["status" => "error", "mensaje" => "Correo o contraseña incorrectos"]);
-        }
-        break;
     //categoria 
     case 'obtener_por_categoria':
         $id_categoria = intval($_REQUEST['id_categoria'] ?? 0);
