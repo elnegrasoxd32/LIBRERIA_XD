@@ -45,6 +45,7 @@ switch ($accion) {
             if ($row) {
                 echo json_encode([
                     "status" => "ok",
+                    "id_libro" => $row['id_libro'], // 👈 ¡AGREGA ESTA LÍNEA AQUÍ!
                     "titulo" => $row['titulo'],
                     "autor" => $row['autor'],
                     "descripcion_corta" => $row['descripcion_corta'],
