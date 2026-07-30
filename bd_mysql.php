@@ -222,7 +222,27 @@ switch ($accion) {
         
         echo json_encode(["status" => "ok", "historial" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
         break;
+    case 'obtener_historial_prestamos':
+        $id_usuario = intval($_REQUEST['id_usuario'] ?? 0);
 
+        if ($id_usuario > 0) {
+            $sql = "SELECT p.id_prestamo, l.titulo, c.nombre AS genero, 
+                           TO_CHAR(p.fecha_prestamo, 'DD/MM/YYYY') AS fecha_prestamo,
+                           TO_CHAR(p.fecha_devolucion, 'DD/MM/YYYY') AS fecha_devolucion
+                    FROM prestamos p
+                    INNER JOIN libros l ON p.id_libro = l.id_libro
+                    INNER JOIN categorias c ON l.id_categoria = c.id_categoria
+                    WHERE p.id_usuario = :id_user AND p.estado = 'devuelto'
+                    ORDER BY p.fecha_devolucion DESC";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([':id_user' => $id_usuario]);
+            
+            echo json_encode(["status" => "ok", "historial" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        } else {
+            echo json_encode(["status" => "error", "mensaje" => "ID de usuario no válido"]);
+        }
+        break;
     // ==========================================
     //  DEVOLVER LIBRO
     // ==========================================
