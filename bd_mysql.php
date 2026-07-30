@@ -338,7 +338,41 @@ switch ($accion) {
         } else {
             echo json_encode(["status" => "error", "mensaje" => "Ingresa email y contraseña"]);
         }
-        break;      
+        break; 
+    case 'obtener_perfil_usuario':
+        $id_usuario = intval($_REQUEST['id_usuario'] ?? 0);
+
+        if ($id_usuario > 0) {
+            // 1. Obtener datos del usuario
+            $stmtUser = $pdo->prepare("SELECT nombre, email FROM usuarios WHERE id_usuario = :id");
+            $stmtUser->execute([':id' => $id_usuario]);
+            $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
+
+            if ($user) {
+                // 2. Contar libros pendientes (activos)
+                $stmtPend = $pdo->prepare("SELECT COUNT(*) FROM prestamos WHERE id_usuario = :id AND estado = 'activo'");
+                $stmtPend->execute([':id' => $id_usuario]);
+                $pendientes = $stmtPend->fetchColumn();
+
+                // 3. Contar libros devueltos
+                $stmtDev = $pdo->prepare("SELECT COUNT(*) FROM prestamos WHERE id_usuario = :id AND estado = 'devuelto'");
+                $stmtDev->execute([':id' => $id_usuario]);
+                $devueltos = $stmtDev->fetchColumn();
+
+                echo json_encode([
+                    "status" => "ok",
+                    "nombre" => $user['nombre'],
+                    "email" => $user['email'],
+                    "pendientes" => $pendientes,
+                    "devueltos" => $devueltos
+                ]);
+            } else {
+                echo json_encode(["status" => "error", "mensaje" => "Usuario no encontrado"]);
+            }
+        } else {
+            echo json_encode(["status" => "error", "mensaje" => "ID de usuario inválido"]);
+        }
+        break;     
     // Acción no reconocida
     default:
         echo json_encode(["status" => "error", "mensaje" => "Acción no especificada o no válida"]);
